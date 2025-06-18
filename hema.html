@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Bank File Integrity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Basic CSS Variables for theming */
+        :root {
+            --primary: #dc2626; /* Red-600 */
+            --secondary: #f9fafb; /* Gray-50 */
+            --bg-light: #f3f4f6; /* Gray-100 */
+            --bg-dark: #1f2937; /* Gray-800 */
+            --text-light: #e5e7eb; /* Gray-200 */
+            --text-dark: #111827; /* Gray-900 */
+            --accent: #2563eb; /* Blue-600 */
+            --shadow-light: rgba(0, 0, 0, 0.1);
+            --shadow-dark: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+        }
+        body.dark-mode .container {
+            background: #374151; /* Darker gray for container in dark mode */
+            box-shadow: 0 0 25px var(--shadow-dark);
+        }
+        body.dark-mode h1 {
+            color: var(--primary);
+        }
+        body.dark-mode button,
+        body.dark-mode input[type="file"],
+        body.dark-mode input[type="text"] {
+            background-color: #4b5563; /* Darker background for inputs/buttons */
+            color: var(--text-light);
+            border-color: #6b7280;
+        }
+        body.dark-mode button:hover {
+            background-color: #ef4444; /* Slightly lighter red on hover */
+        }
+        body.dark-mode th {
+            background-color: var(--primary);
+            color: white;
+        }
+        body.dark-mode #verifyResult {
+            background: #4b5563;
+            color: var(--text-light);
+            border-left-color: var(--accent);
+        }
+
+        /* General body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top */
+            min-height: 100vh;
+            background-color: var(--bg-light);
+            transition: background-color 0.4s ease-in-out, color 0.4s ease-in-out;
+            line-height: 1.6;
+        }
+
+        /* Main container styling */
+        .container {
+            max-width: 960px;
+            width: 100%; /* Make it fluid */
+            margin: 20px auto; /* Adjust margin for top/bottom spacing */
+            padding: 30px;
+            background: var(--secondary);
+            border-radius: 15px;
+            box-shadow: 0 0 25px var(--shadow-light);
+            transition: all 0.4s ease-in-out;
+            color: var(--text-dark);
+        }
+
+        /* Header styling */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--primary);
+            margin-bottom: 10px;
+            animation: fadeIn 1s ease-in;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            color: var(--text-dark);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 5px;
+        }
+        body.dark-mode h2 {
+            color: var(--text-light);
+        }
+
+        /* Form elements and buttons */
+        button,
+        input[type="file"],
+        input[type="text"] {
+            padding: 12px 15px;
+            margin: 10px 5px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db; /* Gray-300 */
+            font-size: 16px;
+            transition: all 0.3s ease-in-out;
+            box-sizing: border-box; /* Include padding in element's total width/height */
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px); /* Adjust width for padding/margin */
+            max-width: 400px;
+        }
+        input[type="file"] {
+            width: calc(100% - 22px);
+            max-width: 400px;
+        }
+
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        button:hover {
+            background-color: #ef4444; /* Slightly darker red on hover */
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transition: width 0.4s ease-out, height 0.4s ease-out, opacity 0.4s ease-out;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: -1;
+        }
+
+        button:hover::before {
+            width: 200%;
+            height: 200%;
+            opacity: 1;
+        }
+
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden; /* Ensures rounded corners on table */
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #e5e7eb; /* Gray-200 */
+            text-align: left;
+        }
+        body.dark-mode th, body.dark-mode td {
+            border-color: #4b5563; /* Darker border in dark mode */
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        td a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        td a:hover {
+            text-decoration: underline;
+        }
+
+        /* Verification Result Section */
+        #verifyResult {
+            margin-top: 20px;
+            padding: 20px;
+            border-left: 5px solid var(--accent);
+            background: #eff6ff; /* Blue-50 */
+            border-radius: 8px;
+            animation: fadeIn 1s ease-out;
+            font-size: 1.1em;
+            color: var(--text-dark);
+        }
+        #verifyResult h3 {
+            margin-top: 0;
+            color: #10b981; /* Green for success */
+        }
+        #verifyResult p {
+            margin-bottom: 8px;
+        }
+        #verifyResult p strong {
+            color: var(--primary);
+        }
+        body.dark-mode #verifyResult h3 {
+            color: #34d399; /* Lighter green for success */
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px auto;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+            button, input[type="file"], input[type="text"] {
+                width: 100%;
+                margin: 8px 0;
+                display: block;
+            }
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr { border: 1px solid #e5e7eb; margin-bottom: 10px; border-radius: 8px; }
+            td {
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+            }
+            td:before {
+                position: absolute;
+                top: 6px;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: 600;
+                color: var(--primary);
+            }
+            td:nth-of-type(1):before { content: "File Hash:"; }
+            td:nth-of-type(2):before { content: "IPFS CID:"; }
+            td:nth-of-type(3):before { content: "File Name:"; }
+            td:nth-of-type(4):before { content: "Metadata:"; }
+            td:nth-of-type(5):before { content: "Uploader:"; }
+            td:nth-of-type(6):before { content: "Timestamp:"; }
+            body.dark-mode td:before {
+                color: var(--accent);
+            }
+        }
+
+        /* Dark Mode Toggle Switch */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end; /* Align to the right */
+            margin-bottom: 20px;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 48px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: #ccc;
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 4px;
+            content: "";
+            height: 16px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 16px;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="theme-switch-wrapper">
+            <span>Light Mode</span>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider round"></div>
+            </label>
+            <span>Dark Mode</span>
+        </div>
+
+        <header>
+            <h1>🩸 Blood Bank File Integrity System</h1>
+            <p>Ensure the tamper-proof integrity of blood bank records using Blockchain and IPFS.</p>
+        </header>
+
+        <!-- Upload Section -->
+        <section>
+            <h2>📤 Upload Blood Bank Record</h2>
+            <form id="uploadForm">
+                <input type="file" id="uploadFile" required>
+                <input type="text" id="metadata" placeholder="Enter Metadata (e.g., Donor ID, Blood Type)" required>
+                <button type="submit">Upload Record</button>
+            </form>
+        </section>
+
+        <!-- Verify Section -->
+        <section>
+            <h2>🔍 Verify File Integrity</h2>
+            <form id="verifyForm">
+                <input type="file" id="verifyFile" required>
+                <button type="submit">Verify File</button>
+            </form>
+            <div id="verifyResult"></div>
+        </section>
+
+        <!-- Records Section -->
+        <section>
+            <h2>📁 Stored Records</h2>
+            <table id="recordsTable">
+                <thead>
+                    <tr>
+                        <th>File Hash</th>
+                        <th>IPFS CID</th>
+                        <th>File Name</th>
+                        <th>Metadata</th>
+                        <th>Uploader</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody">
+                    <!-- Records will be loaded here by JavaScript -->
+                </tbody>
+            </table>
+            <div id="noRecordsMessage" style="text-align: center; margin-top: 20px; color: gray; display: none;">
+                No records found. Upload a file to get started!
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // --- Theme Toggle Logic ---
+        const checkbox = document.getElementById('checkbox');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme) {
+            document.body.classList.add(currentTheme);
+            if (currentTheme === 'dark-mode') {
+                checkbox.checked = true;
+            }
+        }
+
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('theme', 'light-mode');
+            }
+        });
+
+        // --- Fetch Records on Page Load ---
+        async function fetchRecords() {
+            try {
+                const response = await fetch('http://localhost:5000/records');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const records = await response.json();
+                const tbody = document.getElementById('recordsBody');
+                const noRecordsMessage = document.getElementById('noRecordsMessage');
+                tbody.innerHTML = ''; // Clear existing rows
+
+                if (records.length === 0) {
+                    noRecordsMessage.style.display = 'block';
+                } else {
+                    noRecordsMessage.style.display = 'none';
+                    records.forEach(record => {
+                        const row = document.createElement('tr');
+                        // Use toLocaleString for better date formatting
+                        const timestampDate = new Date(record.timestamp * 1000).toLocaleString();
+                        row.innerHTML = `
+                            <td>${record.fileHash}</td>
+                            <td><a href="https://ipfs.io/ipfs/${record.ipfsCid}" target="_blank" rel="noopener noreferrer">${record.ipfsCid}</a></td>
+                            <td>${record.fileName}</td>
+                            <td>${record.metadata}</td>
+                            <td>${record.uploader}</td>
+                            <td>${timestampDate}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching records:', error);
+                // Instead of alert, show a message in the UI or console for a better UX
+                // alert('Error fetching records: ' + error.message + '. Ensure backend is running.');
+                document.getElementById('noRecordsMessage').style.display = 'block';
+                document.getElementById('noRecordsMessage').innerHTML = `<p style="color: red;">Error loading records: ${error.message}. Is the backend running?</p>`;
+            }
+        }
+
+        // Call fetchRecords when the page loads
+        document.addEventListener('DOMContentLoaded', fetchRecords);
+
+        // --- Upload File Logic ---
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput.files[0];
+            const metadata = document.getElementById('metadata').value;
+
+            if (!file) {
+                alert("Please select a file to upload.");
+                return;
+            }
+            if (!metadata.trim()) {
+                alert("Please enter metadata for the record.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file); // Append the File object directly
+            formData.append('metadata', metadata);
+
+            try {
+                const response = await fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
+                }
+
+                alert(`✅ Uploaded Successfully!\n\nFile ID: ${result.fileId}\nFile Hash: ${result.fileHash}\nIPFS CID: ${result.ipfsCid}`);
+                fileInput.value = ''; // Clear the file input
+                document.getElementById('metadata').value = ''; // Clear metadata input
+                fetchRecords(); // Refresh the records table
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Upload failed: ' + error.message);
+            }
+        });
+
+        // --- Verify File Logic ---
+        document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('verifyFile');
+            const file = fileInput.files[0];
+            const verifyDiv = document.getElementById('verifyResult');
+            verifyDiv.innerHTML = 'Verifying...'; // Provide immediate feedback
+
+            if (!file) {
+                verifyDiv.innerHTML = '<p>Please select a file to verify.</p>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:5000/verify', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
+                }
+
+                if (result.isValid) {
+                    // Assuming result.record contains all details if isValid is true
+                    verifyDiv.innerHTML = `
+                        <h3>✅ File Verified!</h3>
+                        <p><strong>Name:</strong> ${result.record.fileName}</p>
+                        <p><strong>CID:</strong> <a href="https://ipfs.io/ipfs/${result.record.ipfsCid}" target="_blank" rel="noopener noreferrer">${result.record.ipfsCid}</a></p>
+                        <p><strong>Metadata:</strong> ${result.record.metadata}</p>
+                        <p><strong>Uploader:</strong> ${result.record.uploader}</p>
+                        <p><strong>Time:</strong> ${new Date(result.record.timestamp * 1000).toLocaleString()}</p>
+                    `;
+                } else {
+                    verifyDiv.innerHTML = `<p>⚠ File not found or hash mismatch. Integrity check failed.</p>`;
+                }
+            } catch (error) {
+                console.error('Verification failed:', error);
+                verifyDiv.innerHTML = `<p>❌ Verification failed: ${error.message}</p>`;
+            } finally {
+                fileInput.value = ''; // Clear the file input after verification attempt
+            }
+        });
+    </script>
+</body>
+</html>
